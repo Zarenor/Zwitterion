@@ -1,0 +1,11 @@
+[package]
+name = "rustflame-ffi"
+version = "0.1.0"
+authors = ["Zachary Jordan <zijordan@gmail.com>"]
+
+[lib]
+name="rustflame_ffi"
+crate-type=["cdylib"]
+
+[dependencies]
+#rustflame = {path = "../rustflame"}

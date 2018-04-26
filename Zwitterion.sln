@@ -1,0 +1,94 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2037
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zwitterion", "Zwitterion\Zwitterion.csproj", "{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5740BF88-9AE7-451D-8E28-6ABADC9D4931}"
+	ProjectSection(SolutionItems) = preProject
+		Cargo.toml = Cargo.toml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustflameFFI-CS", "RustflameFFI-CS\RustflameFFI-CS.csproj", "{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rustflame", "rustflame", "{94DF0D38-ABD8-4B2E-9E40-52839B83C536}"
+	ProjectSection(SolutionItems) = preProject
+		rustflame\.gitattributes = rustflame\.gitattributes
+		rustflame\.gitignore = rustflame\.gitignore
+		rustflame\Cargo.lock = rustflame\Cargo.lock
+		rustflame\Cargo.toml = rustflame\Cargo.toml
+		rustflame\Flames.flame = rustflame\Flames.flame
+		rustflame\OneFlame.flame = rustflame\OneFlame.flame
+		rustflame\Rustflame.iml = rustflame\Rustflame.iml
+		rustflame\Rustflame.rsproj = rustflame\Rustflame.rsproj
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rustflame-ffi", "rustflame-ffi", "{F01609BE-7F00-4619-9EB6-123410932FDC}"
+	ProjectSection(SolutionItems) = preProject
+		rustflame-ffi\Cargo.toml = rustflame-ffi\Cargo.toml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CD6699D9-1525-4D89-A092-BC195B9EE5A1}"
+	ProjectSection(SolutionItems) = preProject
+		rustflame-ffi\src\lib.rs = rustflame-ffi\src\lib.rs
+		rustflame-ffi\src\tests.rs = rustflame-ffi\src\tests.rs
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A9ABB151-B0D4-43C9-A795-DCD66D3341BE}"
+	ProjectSection(SolutionItems) = preProject
+		rustflame\src\color.rs = rustflame\src\color.rs
+		rustflame\src\flame_2d.rs = rustflame\src\flame_2d.rs
+		rustflame\src\lib.rs = rustflame\src\lib.rs
+		rustflame\src\main.rs = rustflame\src\main.rs
+		rustflame\src\main.rs.bk = rustflame\src\main.rs.bk
+		rustflame\src\tests.rs = rustflame\src\tests.rs
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleHarness", "ConsoleHarness\ConsoleHarness.csproj", "{541088AD-0050-4A13-8FD4-919590B03C3C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Debug|x64.Build.0 = Debug|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Release|x64.ActiveCfg = Release|Any CPU
+		{E1FCBB19-08C3-4F1B-B8C0-73B24F755672}.Release|x64.Build.0 = Release|Any CPU
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Debug|x64.ActiveCfg = Debug|x64
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Debug|x64.Build.0 = Debug|x64
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Release|x64.ActiveCfg = Release|x64
+		{8F448B34-5A7E-4BD4-BA3B-E984B88C46BE}.Release|x64.Build.0 = Release|x64
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Debug|x64.ActiveCfg = Debug|x64
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Debug|x64.Build.0 = Debug|x64
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Release|x64.ActiveCfg = Release|x64
+		{541088AD-0050-4A13-8FD4-919590B03C3C}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CD6699D9-1525-4D89-A092-BC195B9EE5A1} = {F01609BE-7F00-4619-9EB6-123410932FDC}
+		{A9ABB151-B0D4-43C9-A795-DCD66D3341BE} = {94DF0D38-ABD8-4B2E-9E40-52839B83C536}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {540EC629-7420-4CDB-9F5F-7BF5D024207B}
+	EndGlobalSection
+EndGlobal

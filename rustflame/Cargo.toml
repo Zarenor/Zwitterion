@@ -1,0 +1,12 @@
+[package]
+name = "rustflame"
+version = "0.1.0"
+authors = ["Zachary Jordan <zijordan@gmail.com>"]
+
+[dependencies]
+lodepng = {git = "https://github.com/kornelski/lodepng-rust" }
+# "2"
+rgb = "0.8"
+rand = "0.4"
+#conrod = "^0"
+nom = "*"
