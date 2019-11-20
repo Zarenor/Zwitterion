@@ -1,9 +1,5 @@
-#![feature(get_type_id)]
-#![feature(assoc_unix_epoch)]
 extern crate lodepng;
 extern crate rustflame;
-
-use rustflame::Config;
 
 use rustflame::color::ColorFRGB;
 use rustflame::flame_2d;
@@ -11,12 +7,12 @@ use rustflame::flame_2d::AffineTransform as Affine2d;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::process;
+
 use std::time;
 use std::time::Instant;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let _args: Vec<String> = std::env::args().collect();
     //let startupconfig;
     println!("rustflame starting up...");
     quickrun();

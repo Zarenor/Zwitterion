@@ -1,4 +1,3 @@
-use std::cmp;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct ColorFRGB {
     pub r: f32,
@@ -53,7 +52,11 @@ pub struct ColorFHSV {
 
 impl ColorFHSV {
     pub fn new(hue: f32, saturation: f32, value: f32) -> Option<ColorFHSV> {
-        if hue > 360.0 || hue < 0.0 || saturation > 1.0 || saturation < 0.0 || value > 1.0
+        if hue > 360.0
+            || hue < 0.0
+            || saturation > 1.0
+            || saturation < 0.0
+            || value > 1.0
             || value < 0.0
         {
             None

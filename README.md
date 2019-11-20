@@ -1,2 +1,2 @@
 # Zwitterion
-## A fractal flame renderer with a C#/WPF Frontend and a Rust rendering engine.
+## A fractal flame renderer with a Rust rendering engine.

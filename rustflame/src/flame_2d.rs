@@ -4,7 +4,7 @@ extern crate rgb;
 
 use self::lodepng::Bitmap;
 use self::lodepng::RGB;
-use color::ColorFRGB;
+use crate::color::ColorFRGB;
 use rand::Rng;
 use std::iter::Sum;
 use std::ops::Add;
@@ -13,7 +13,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 pub struct Flame {
-    name: String,
+    pub name: String,
     pub transforms: Vec<Transform>,
     pub colors: Vec<ColorFRGB>,
     //Plenty more to be added later
@@ -40,8 +40,8 @@ impl Flame {
 pub enum Transform {
     AffineOnly(AffineTransform),              //Linear, basically
     Chaining(Box<Transform>, Box<Transform>), //For ridic shit... but we don't handle an affine at all here. kinda odd?
-    Basic(AffineTransform, Box<TransformFunction>),
-    Sum(AffineTransform, Vec<(f64, Box<TransformFunction>)>), //The thing we all know, love, and have come to expect elsewhere.
+    Basic(AffineTransform, Box<dyn TransformFunction>),
+    Sum(AffineTransform, Vec<(f64, Box<dyn TransformFunction>)>), //The thing we all know, love, and have come to expect elsewhere.
 }
 
 impl Transform {
@@ -197,7 +197,7 @@ impl Renderer {
         //TODO: consider using an intermediate struct to return to allow for post-processing.
         let pixels = (self.image_width * self.image_height) as usize;
         let mut render_array = Vec::<RenderBin>::with_capacity(pixels);
-        for p in 0..pixels {
+        for _p in 0..pixels {
             //Hopefully this does this right,and doesn't do anything ludicrous.
             render_array.push(RenderBin::default())
         }
@@ -251,7 +251,6 @@ impl Renderer {
                 //ignore this transformation if it falls outside -
                 //for now, this means that point is unaffected and will receive another transform later.
                 //We may change that ro replacement with a new, random point that isn't plotted.
-
             } else {
                 //Plot the point
                 let px = p1.x + 1.0;
@@ -275,7 +274,7 @@ impl Renderer {
             }
             iterations += 1;
             //Stop iterating when the duration has elapsed.
-            keep_looping = (iterate_start.elapsed() < iterate_duration)
+            keep_looping = iterate_start.elapsed() < iterate_duration
         }
         println!(
             "[{:?}] Stopped iterating, {} iterations complete",

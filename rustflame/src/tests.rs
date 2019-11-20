@@ -1,8 +1,8 @@
 extern crate lodepng;
-use color::*;
-use flame_2d;
-use flame_2d::AffineTransform as Affine2d;
-use flame_2d::Transform as Transform2d;
+use crate::color::*;
+use crate::flame_2d;
+use crate::flame_2d::AffineTransform as Affine2d;
+use crate::flame_2d::Transform as Transform2d;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -10,32 +10,32 @@ use std::time;
 use std::time::Instant;
 
 #[test]
-fn fRGB_to_fHSV_and_back() {
+fn frgb_to_fhsv_and_back() {
     let red = ColorFRGB::new(1.0, 0.0, 0.0).unwrap();
     let green = ColorFRGB::new(1.0, 0.0, 0.0).unwrap();
     let blue = ColorFHSV::new(240.0, 1.0, 1.0).unwrap();
 
-    let redHSV = ColorFHSV::from(red);
-    let greenHSV = ColorFHSV::from(green);
-    let blueRGB = ColorFRGB::from(blue);
+    let red_hsv = ColorFHSV::from(red);
+    let green_hsv = ColorFHSV::from(green);
+    let blue_rgb = ColorFRGB::from(blue);
 
-    assert_eq!(ColorFRGB::from(redHSV), red);
-    assert_eq!(ColorFRGB::from(greenHSV), green);
-    assert_eq!(ColorFHSV::from(blueRGB), blue);
+    assert_eq!(ColorFRGB::from(red_hsv), red);
+    assert_eq!(ColorFRGB::from(green_hsv), green);
+    assert_eq!(ColorFHSV::from(blue_rgb), blue);
 
     let yellow = ColorFRGB::new(1.0, 1.0, 0.0).unwrap();
     let orange = ColorFHSV::new(30.0, 1.0, 1.0).unwrap();
     let desat = ColorFHSV::new(70.0, 0.3, 0.7).unwrap();
 
-    let yellowHSV = ColorFHSV::from(yellow);
-    let orangeRGB = ColorFRGB::from(orange);
-    let desatRGB = ColorFRGB::from(desat);
+    let yellow_hsv = ColorFHSV::from(yellow);
+    let orange_rgb = ColorFRGB::from(orange);
+    let desat_rgb = ColorFRGB::from(desat);
 
-    assert_eq!(ColorFRGB::from(yellowHSV), yellow);
-    assert_eq!(ColorFHSV::from(orangeRGB), orange);
+    assert_eq!(ColorFRGB::from(yellow_hsv), yellow);
+    assert_eq!(ColorFHSV::from(orange_rgb), orange);
 
     //Breaking it apart for some teeny tolerance.
-    let desat_back = ColorFHSV::from(desatRGB);
+    let desat_back = ColorFHSV::from(desat_rgb);
     assert!((desat_back.h - desat.h).abs() < 0.0001);
     assert!((desat_back.s - desat.s).abs() < 0.0001);
     assert!((desat_back.v - desat.v).abs() < 0.0001);
