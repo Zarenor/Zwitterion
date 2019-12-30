@@ -1,14 +1,16 @@
 use druid::kurbo::Size;
 use druid::lens::{Field, Id, Map};
-use druid::widget::{Flex, Label, Parse, SizedBox, Split, TextBox, WidgetExt};
+use druid::widget::{Flex, Label, LabelText, Parse, SizedBox, Split, TextBox, WidgetExt};
 use druid::*;
+use std::fmt::Display;
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
 fn main() {
     let title = LocalizedString::new("title").with_placeholder("Zwitterion Druid Test".to_string());
 
-    let window = WindowDesc::new(transform_edit_window).title(title);
+    let window = WindowDesc::new(TransformEditWindow::new).title(title);
     AppLauncher::with_window(window)
         .use_simple_logger()
         .launch(create_data())
@@ -24,15 +26,58 @@ fn create_data() -> Flame {
     }
 }
 
-fn transform_edit_window() -> impl Widget<Flame> {
-    let left_panel = transform_canvas();
-    let right_panel = transform_edit_panel();
-    let root = Split::horizontal(left_panel, right_panel)
-        .split_point(0.7)
-        .draggable(true);
-    root
+struct TransformEditWindow {
+    split: Split<Flame>,
 }
 
+impl TransformEditWindow {
+    fn new() -> Self {
+        let left_panel = transform_canvas();
+        let right_panel = transform_edit_panel();
+        let split = Split::horizontal(left_panel, right_panel)
+            .split_point(0.7)
+            .draggable(true);
+        Self { split }
+    }
+}
+
+impl Widget<Flame> for TransformEditWindow {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Flame, env: &Env) {
+        let old_data = data.clone();
+        match &old_data.selected_transform{
+            Some(xform) =>{
+                let old_xform = Transform::clone(&xform);
+                let xform_string = format!("{:?}", old_xform);
+                
+            }
+            None =>{
+                println!("Should be unreachable!")
+            }
+        }
+        self.split.event(ctx, event, data, env);
+        if !old_data.same(data) {
+            ctx.invalidate();
+        }
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&Flame>, data: &Flame, env: &Env) {
+        self.split.update(ctx, old_data, data, env);
+    }
+
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &Flame,
+        env: &Env,
+    ) -> Size {
+        self.split.layout(ctx, bc, data, env)
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &Flame, env: &Env) {
+        self.split.paint(paint_ctx, data, env);
+    }
+}
 fn transform_edit_panel() -> impl Widget<Flame> {
     Split::vertical(
         transform_list_panel(),
@@ -64,20 +109,26 @@ fn unarc_put<T: Data + Default>(data: &mut Option<Arc<T>>, lensed: T) {
     //If there's no data here, there's nothing selected to edit.
     if let Some(arc) = data {
         if !T::same(&arc, &lensed) {
-            let mut data = Arc::make_mut(arc);
-            *data = lensed;
+            *Arc::make_mut(arc) = lensed;
+            *data = Some(arc.clone());
         }
     }
 }
 
 fn get_focus_affine() -> impl Lens<Option<Arc<Transform>>, AffineTransform> + Clone {
     let focus_affine = Map::new(unarc_get, unarc_put);
-    let focus_affine = focus_affine.then(Map::new(
-        |t: &Transform| t.affine_transform().clone(),
-        |t: &mut Transform, f: AffineTransform| t.set_affine_transform(f),
-    ));
+    let focus_affine = focus_affine.then(Map::new(get_affine, put_affine));
     focus_affine
 }
+
+fn get_affine(t: &Transform) -> AffineTransform {
+    t.affine_transform().clone()
+}
+
+fn put_affine(t: &mut Transform, f: AffineTransform) {
+    t.set_affine_transform(f);
+}
+
 fn unoption_map<T: Data>() -> impl Lens<T, Option<T>> {
     Map::new(
         |t: &T| Some(t.clone()),
@@ -93,31 +144,12 @@ struct TransformCoordsPanel {
 }
 impl TransformCoordsPanel {
     fn new() -> Self {
-        let label_xx = Label::new("xx:");
-        let label_xy = Label::new("xy:");
-        let label_yx = Label::new("yx:");
-        let label_yy = Label::new("yy:");
-        let label_cx = Label::new("cx:");
-        let label_cy = Label::new("cy:");
-        let editbox = || LensWrap::new(Parse::new(TextBox::new().padding(3.0)), unoption_map());
-        let flex_xx = Flex::row()
-            .with_child(label_xx, 0.0)
-            .with_child(editbox(), 1.0);
-        let flex_xy = Flex::row()
-            .with_child(label_xy, 0.0)
-            .with_child(editbox(), 1.0);
-        let flex_yx = Flex::row()
-            .with_child(label_yx, 0.0)
-            .with_child(editbox(), 1.0);
-        let flex_yy = Flex::row()
-            .with_child(label_yy, 0.0)
-            .with_child(editbox(), 1.0);
-        let flex_cx = Flex::row()
-            .with_child(label_cx, 0.0)
-            .with_child(editbox(), 1.0);
-        let flex_cy = Flex::row()
-            .with_child(label_cy, 0.0)
-            .with_child(editbox(), 1.0);
+        let flex_xx = LabeledTextBox::new("xx:");
+        let flex_xy = LabeledTextBox::new("xy:");
+        let flex_yx = LabeledTextBox::new("yx:");
+        let flex_yy = LabeledTextBox::new("yy:");
+        let flex_cx = LabeledTextBox::new("cx:");
+        let flex_cy = LabeledTextBox::new("cy:");
         let row_x = Flex::row()
             .with_child(LensWrap::new(flex_xx, lens!(AffineTransform, xx)), 0.5)
             .with_child(LensWrap::new(flex_xy, lens!(AffineTransform, xy)), 0.5);
@@ -138,7 +170,11 @@ impl TransformCoordsPanel {
 }
 impl Widget<AffineTransform> for TransformCoordsPanel {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut AffineTransform, env: &Env) {
-        self.flex_col.event(ctx, event, data, env)
+        let old_data = data.clone();
+        self.flex_col.event(ctx, event, data, env);
+        if !old_data.same(data) {
+            ctx.invalidate();
+        }
     }
 
     fn update(
@@ -148,7 +184,14 @@ impl Widget<AffineTransform> for TransformCoordsPanel {
         data: &AffineTransform,
         env: &Env,
     ) {
-        //unimplemented!()
+        match old_data {
+            None => ctx.invalidate(),
+            Some(old) => {
+                if !old.same(&data) {
+                    ctx.invalidate();
+                }
+            }
+        }
         self.flex_col.update(ctx, old_data, data, env);
     }
 
@@ -191,6 +234,8 @@ impl Data for Flame {
         if self.transforms.len() != other.transforms.len() {
             return false;
         }
+        if !self.selected_transform.same(&other.selected_transform)
+        {return false;}
         let zip = self.transforms.iter().zip(other.transforms.iter());
         for (transform1, transform2) in zip {
             if !transform1.same(transform2) {
@@ -201,7 +246,7 @@ impl Data for Flame {
     }
 }
 
-#[derive(Data, Clone, PartialEq)]
+#[derive(Data, Clone, PartialEq,Debug)]
 enum Transform {
     Linear(AffineTransform),
     //Many, many more to come, plus (hopefully) plugin extensibility. And some way to introspect the names, or attach them as metadata.
@@ -213,7 +258,7 @@ impl Transform {
         }
     }
     fn set_affine_transform(&mut self, xform: AffineTransform) {
-        match *self {
+        match self {
             Transform::Linear(mut xf) => xf = xform,
         }
     }
@@ -258,5 +303,44 @@ impl<T: ?Sized> Lens<T, ()> for UnitLens {
 
     fn with_mut<V, F: FnOnce(&mut ()) -> V>(&self, data: &mut T, f: F) -> V {
         f(&mut ())
+    }
+}
+
+struct LabeledTextBox<T: 'static + FromStr + Display + Data> {
+    flex_row: Flex<T>,
+}
+
+impl<T: 'static + FromStr + Display + Data> LabeledTextBox<T> {
+    fn new(label_text: impl Into<LabelText<T>>) -> Self {
+        let label = Label::new(label_text);
+        let edit = LensWrap::new(Parse::new(TextBox::new().padding(3.0)), unoption_map());
+        let flex_row = Flex::row().with_child(label, 0.0).with_child(edit, 1.0);
+        Self { flex_row }
+    }
+}
+
+impl<T: 'static + FromStr + Display + Data> Widget<T> for LabeledTextBox<T> {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
+        self.flex_row.event(ctx, event, data, env);
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
+        match old_data {
+            None => ctx.invalidate(),
+            Some(old) => {
+                if !old.same(&data) {
+                    ctx.invalidate();
+                }
+            }
+        }
+        self.flex_row.update(ctx, old_data, data, env);
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+        self.flex_row.layout(ctx, bc, data, env)
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &T, env: &Env) {
+        self.flex_row.paint(paint_ctx, data, env);
     }
 }
