@@ -1,7 +1,11 @@
 use druid::kurbo::Size;
 use druid::lens::{Field, Id, Map};
-use druid::widget::{Flex, Label, LabelText, Parse, SizedBox, Split, TextBox, WidgetExt};
+use druid::widget::{
+    Container, Flex, Label, LabelText, Padding, Parse, SizedBox, Split, TextBox, WidgetExt,
+};
 use druid::*;
+use rustflame::color::ColorFHSV;
+use std::f64::INFINITY;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -44,15 +48,12 @@ impl TransformEditWindow {
 impl Widget<Flame> for TransformEditWindow {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut Flame, env: &Env) {
         let old_data = data.clone();
-        match &old_data.selected_transform{
-            Some(xform) =>{
+        match &old_data.selected_transform {
+            Some(xform) => {
                 let old_xform = Transform::clone(&xform);
                 let xform_string = format!("{:?}", old_xform);
-                
             }
-            None =>{
-                println!("Should be unreachable!")
-            }
+            None => println!("Should be unreachable!"),
         }
         self.split.event(ctx, event, data, env);
         if !old_data.same(data) {
@@ -83,9 +84,12 @@ fn transform_edit_panel() -> impl Widget<Flame> {
         transform_list_panel(),
         LensWrap::new(
             LensWrap::new(
-                Split::vertical(TransformCoordsPanel::new(), transform_variations_panel())
-                    .draggable(true),
-                get_focus_affine(),
+                Split::vertical(
+                    TransformCoordsPanel::new().lens(affine_lens()),
+                    transform_variations_panel(),
+                )
+                .draggable(true),
+                unarc_lens(),
             ),
             lens!(Flame, selected_transform),
         ),
@@ -98,29 +102,9 @@ fn transform_list_panel() -> impl Widget<Flame> {
     SizedBox::empty().expand()
 }
 
-fn unarc_get<T: Data + Default>(data: &Option<Arc<T>>) -> T {
-    match data {
-        Some(arc) => T::clone(&arc),
-        None => Default::default(),
-    }
+fn affine_lens() -> impl Lens<Transform, AffineTransform> + Clone {
+    Map::new(get_affine, put_affine)
 }
-
-fn unarc_put<T: Data + Default>(data: &mut Option<Arc<T>>, lensed: T) {
-    //If there's no data here, there's nothing selected to edit.
-    if let Some(arc) = data {
-        if !T::same(&arc, &lensed) {
-            *Arc::make_mut(arc) = lensed;
-            *data = Some(arc.clone());
-        }
-    }
-}
-
-fn get_focus_affine() -> impl Lens<Option<Arc<Transform>>, AffineTransform> + Clone {
-    let focus_affine = Map::new(unarc_get, unarc_put);
-    let focus_affine = focus_affine.then(Map::new(get_affine, put_affine));
-    focus_affine
-}
-
 fn get_affine(t: &Transform) -> AffineTransform {
     t.affine_transform().clone()
 }
@@ -151,20 +135,18 @@ impl TransformCoordsPanel {
         let flex_cx = LabeledTextBox::new("cx:");
         let flex_cy = LabeledTextBox::new("cy:");
         let row_x = Flex::row()
-            .with_child(LensWrap::new(flex_xx, lens!(AffineTransform, xx)), 0.5)
-            .with_child(LensWrap::new(flex_xy, lens!(AffineTransform, xy)), 0.5);
+            .with_child(flex_xx.lens(AffineTransform::xx), 0.5)
+            .with_child(flex_xy.lens(AffineTransform::xy), 0.5);
         let row_y = Flex::row()
-            .with_child(LensWrap::new(flex_yx, lens!(AffineTransform, yx)), 0.5)
-            .with_child(LensWrap::new(flex_yy, lens!(AffineTransform, yy)), 0.5);
+            .with_child(flex_yx.lens(AffineTransform::yx), 0.5)
+            .with_child(flex_yy.lens(AffineTransform::yy), 0.5);
         let row_c = Flex::row()
-            .with_child(LensWrap::new(flex_cx, lens!(AffineTransform, cx)), 0.5)
-            .with_child(LensWrap::new(flex_cy, lens!(AffineTransform, cy)), 0.5);
-        let dynlabel = Label::new(|data: &AffineTransform, _env: &_| format!("{:?}", data));
+            .with_child(flex_cx.lens(AffineTransform::cx), 0.5)
+            .with_child(flex_cy.lens(AffineTransform::cy), 0.5);
         let flex_col = Flex::column()
             .with_child(row_x, 1.0)
             .with_child(row_y, 1.0)
-            .with_child(row_c, 1.0)
-            .with_child(dynlabel, 0.7);
+            .with_child(row_c, 1.0);
         Self { flex_col }
     }
 }
@@ -209,16 +191,33 @@ impl Widget<AffineTransform> for TransformCoordsPanel {
         self.flex_col.paint(paint_ctx, data, env);
     }
 }
-fn transform_variations_panel() -> impl Widget<AffineTransform> {
+
+fn transform_variations_panel() -> impl Widget<Transform> {
     SizedBox::empty().expand()
 }
 
 fn transform_canvas() -> impl Widget<Flame> {
-    SizedBox::empty().expand()
+    let mut canvas = Canvas::new(Rect::new(-50.0, -50.0, 50.0, 50.0));
+    let moving_label = CanvasWrap::new(Label::new("Moving?"), |f: &Flame| {
+        match &f.selected_transform {
+            Some(t) => {
+                let a = t.affine_transform();
+                Point::new(a.cx, a.cy)
+            }
+            None => Point::ZERO,
+        }
+    });
+    canvas.add_child(moving_label);
+    Padding::new(
+        5.0,
+        Container::new(canvas)
+            .border(Color::grey8(64), 1.0)
+            .background(Color::BLACK),
+    )
 }
 
 //TODO: Rename to reflect that this is the UI data model, not the flame struct itself
-#[derive(Clone)]
+#[derive(Clone, Lens)]
 struct Flame {
     name: String,
     transforms: Vec<Arc<Transform>>,
@@ -234,8 +233,9 @@ impl Data for Flame {
         if self.transforms.len() != other.transforms.len() {
             return false;
         }
-        if !self.selected_transform.same(&other.selected_transform)
-        {return false;}
+        if !self.selected_transform.same(&other.selected_transform) {
+            return false;
+        }
         let zip = self.transforms.iter().zip(other.transforms.iter());
         for (transform1, transform2) in zip {
             if !transform1.same(transform2) {
@@ -246,11 +246,12 @@ impl Data for Flame {
     }
 }
 
-#[derive(Data, Clone, PartialEq,Debug)]
+#[derive(Data, Clone, PartialEq, Debug)]
 enum Transform {
     Linear(AffineTransform),
     //Many, many more to come, plus (hopefully) plugin extensibility. And some way to introspect the names, or attach them as metadata.
 }
+
 impl Transform {
     fn affine_transform(&self) -> AffineTransform {
         match *self {
@@ -259,15 +260,17 @@ impl Transform {
     }
     fn set_affine_transform(&mut self, xform: AffineTransform) {
         match self {
-            Transform::Linear(mut xf) => xf = xform,
+            Transform::Linear(ref mut xf) => *xf = xform,
         }
     }
 }
+
 impl Default for Transform {
     fn default() -> Self {
         Transform::Linear(Default::default())
     }
 }
+
 #[derive(Data, Clone, Copy, PartialEq, Lens, Debug)]
 struct AffineTransform {
     pub xx: f64,
@@ -289,20 +292,215 @@ impl Default for AffineTransform {
         }
     }
 }
-#[derive(Clone, Copy)]
-struct UnitLens;
-impl UnitLens {
-    fn new() -> Self {
-        Self
+
+fn unarc_lens<T: Data + Default>() -> impl Lens<Option<Arc<T>>, T> + Clone {
+    Map::new(unarc_get, unarc_put)
+}
+fn unarc_get<T: Data + Default>(data: &Option<Arc<T>>) -> T {
+    match data {
+        Some(arc) => T::clone(&arc),
+        None => Default::default(),
     }
 }
-impl<T: ?Sized> Lens<T, ()> for UnitLens {
-    fn with<V, F: FnOnce(&()) -> V>(&self, data: &T, f: F) -> V {
-        f(&())
+fn unarc_put<T: Data + Default>(data: &mut Option<Arc<T>>, lensed: T) {
+    //If there's no data here, there's nothing selected to edit.
+    if let Some(arc) = data {
+        if !T::same(&arc, &lensed) {
+            *Arc::make_mut(arc) = lensed;
+            *data = Some(arc.clone());
+        }
+    }
+}
+
+struct Canvas<T: Data> {
+    visible_area: Rect,
+    children: Vec<(Rect, Box<dyn CanvasLayout<T>>)>,
+}
+//TODO: Figure out dynamic visible area? Data-bound? Or only with pan/zoom?
+// Constrain max/min zoom? Max/min extents?
+impl<T: Data> Canvas<T> {
+    fn new(visible_area: Rect) -> Self {
+        Self {
+            visible_area,
+            children: vec![],
+        }
     }
 
-    fn with_mut<V, F: FnOnce(&mut ()) -> V>(&self, data: &mut T, f: F) -> V {
-        f(&mut ())
+    fn add_child(&mut self, child: impl CanvasLayout<T> + 'static) {
+        self.children.push((Rect::ZERO, Box::new(child)));
+    }
+}
+
+impl<T: Data> Widget<T> for Canvas<T> {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
+        //TODO: Panning & Zooming
+        for (_, child) in self.children.iter_mut() {
+            child.event(ctx, event, data, env);
+        }
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
+        for (_, child) in self.children.iter_mut() {
+            child.update(ctx, old_data, data, env);
+        }
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+        //Child layouts aren't dependent on the layout we're given here.
+        for (layout, child) in self.children.iter_mut() {
+            let (origin, size) = child.canvas_layout(ctx, &self.visible_area, data, env);
+            //It may be we *don't* actually need to store this, because we ignore it anyway.
+            //It's important the child has layout called, though. We just might not need a return.
+            *layout = Rect::from_origin_size(origin, size);
+        }
+        //The canvas will always take up the maximum amount of space.
+        //We'll have to complain? if we're unbounded. Maybe.
+
+        bc.max()
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &T, env: &Env) {
+        if let Err(e) = paint_ctx.save() {
+            //error!("saving render context failed: {:?}", e);
+            return;
+        }
+        let old_region = paint_ctx.region().to_rect();
+        let desired_region = self.visible_area;
+        let x_scale = old_region.width() / desired_region.width();
+        let y_scale = old_region.height() / desired_region.height();
+        let scale = Affine::scale(x_scale.min(y_scale));
+        //TODO: Center properly.
+        let x_trans = old_region.x0.min(old_region.x1) - desired_region.x0.min(desired_region.x1);
+        let y_trans = old_region.y0.min(old_region.y1) - desired_region.y0.min(desired_region.y1);
+        let translate = Affine::translate((x_trans, y_trans));
+        let transform = translate * scale;
+        paint_ctx.transform(transform);
+        println!("Desired rect: {:?}", desired_region);        
+        println!("Scales we got: {} {}",x_scale, y_scale);
+        println!("Transform we got: {:?}", transform);
+        let new_width = old_region.width() / x_scale.min(y_scale);
+        let new_height = old_region.height() / x_scale.min(y_scale);
+        
+        for (_, child) in self.children.iter_mut() {
+            //Maybe we don't need the layout at all?! The CanvasWrap should handle it.
+            //The issue, I think, is going to be figuring out hot/cold, in things which aren't podded.
+            child.paint(paint_ctx, data, env);
+        }
+        if let Err(e) = paint_ctx.restore() {
+            //error!("restoring render context failed: {:?}", e);
+        }
+    }
+}
+
+trait CanvasLayout<T: Data>: Widget<T> {
+    //TODO: Determine if this is the necessary and sufficient amount of information
+    //NOTE: A canvas will only call this method for layout - layout won't be called by the canvas directly.
+    fn canvas_layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        visible_area: &Rect,
+        data: &T,
+        env: &Env,
+    ) -> (Point, Size);
+}
+
+struct CanvasWrap<W: Widget<T>, T: Data, F: Fn(&T) -> Point> {
+    inner: WidgetPod<T, W>,
+    closure: F,
+}
+
+impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> CanvasWrap<W, T, F> {
+    fn new(widget: W, closure: F) -> Self {
+        Self {
+            inner: WidgetPod::new(widget),
+            closure,
+        }
+    }
+}
+
+impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> CanvasLayout<T> for CanvasWrap<W, T, F> {
+    fn canvas_layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        visible_area: &Rect,
+        data: &T,
+        env: &Env,
+    ) -> (Point, Size) {
+        let desired_origin = (self.closure)(data);
+        let desired_size = self.inner.layout(
+            ctx,
+            &BoxConstraints::new(Size::ZERO, Size::new(INFINITY, INFINITY)),
+            data,
+            env,
+        );
+        println!("{} {}", desired_origin,desired_size);
+        self.inner.set_layout_rect(Rect::from_origin_size(desired_origin,desired_size));
+        (desired_origin, desired_size)
+    }
+}
+
+impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> Widget<T> for CanvasWrap<W, T, F> {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
+        self.inner.event(ctx, event, data, env);
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&T>, data: &T, env: &Env) {
+        self.inner.update(ctx, data, env)
+    }
+
+    //NOTE: This is not called when we're being layouted on a canvas, so we act transparently.
+    fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+        self.inner.layout(ctx, bc, data, env)
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &T, env: &Env) {
+        self.inner.paint_with_offset(paint_ctx, data, env);
+    }
+}
+
+struct Line {
+    color: Color,
+}
+impl Line {
+    fn get_size(data: &(Point, Point)) -> Size {
+        let (p0, p1) = data;
+        let xmin = p0.x.min(p1.x);
+        let ymin = p0.y.min(p1.y);
+        let width = p0.x.max(p1.x) - xmin;
+        let height = p0.y.max(p1.y) - ymin;
+        (width, height).into()
+    }
+}
+impl Widget<(Point, Point)> for Line {
+    fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut (Point, Point), env: &Env) {
+        //This is a draw-only widget, for now.
+    }
+
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        _old_data: Option<&(Point, Point)>,
+        _data: &(Point, Point),
+        env: &Env,
+    ) {
+        //Nothing necessary here - we draw whatever data we have
+    }
+
+    fn layout(
+        &mut self,
+        ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &(Point, Point),
+        env: &Env,
+    ) -> Size {
+        bc.constrain(Line::get_size(data))
+    }
+
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &(Point, Point), env: &Env) {
+        //TODO: Fit the size requested.
+        let line = kurbo::Line::new(data.0, data.1);
+        let thickness = if paint_ctx.is_hot() { 2.0 } else { 1.0 };
+        paint_ctx.stroke(line, &self.color, thickness)
     }
 }
 
@@ -343,4 +541,45 @@ impl<T: 'static + FromStr + Display + Data> Widget<T> for LabeledTextBox<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &T, env: &Env) {
         self.flex_row.paint(paint_ctx, data, env);
     }
+}
+
+mod lens {
+    use druid::{Data, Lens};
+    use std::sync::Arc;
+
+    #[derive(Clone, Copy)]
+    pub struct Unit;
+
+    impl<T: ?Sized> Lens<T, ()> for Unit {
+        fn with<V, F: FnOnce(&()) -> V>(&self, _data: &T, f: F) -> V {
+            f(&())
+        }
+
+        fn with_mut<V, F: FnOnce(&mut ()) -> V>(&self, _data: &mut T, f: F) -> V {
+            f(&mut ())
+        }
+    }
+    /*
+    struct InOptionArc;
+
+    impl<T: ?Sized + Data + Default> Lens<Option<Arc<T>>,T> for InOptionArc
+    {
+        fn with<V, F: FnOnce(&U) -> V>(&self, data: &Option<Arc<T>>, f: F) -> V {
+            unimplemented!()
+        }
+
+        fn with_mut<V, F: FnOnce(&mut U) -> V>(&self, data: &mut Option<Arc<T>>, f: F) -> V {
+            if let Some(arc) = data
+            {
+                let old_data : T = &*arc;
+                let ret = f(arc);
+                if !old_data.same(&*arc)
+                {
+                    *Arc::make_mut(arc) = lensed;
+                    *data = Some(arc.clone());
+                }
+            }
+        }
+    }
+    */
 }
