@@ -38,7 +38,7 @@ impl TransformEditWindow {
     fn new() -> Self {
         let left_panel = transform_canvas();
         let right_panel = transform_edit_panel();
-        let split = Split::horizontal(left_panel, right_panel)
+        let split = Split::columns(left_panel, right_panel)
             .split_point(0.7)
             .draggable(true);
         Self { split }
@@ -57,11 +57,15 @@ impl Widget<Flame> for TransformEditWindow {
         }
         self.split.event(ctx, event, data, env);
         if !old_data.same(data) {
-            ctx.invalidate();
+            ctx.request_paint();
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&Flame>, data: &Flame, env: &Env) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &Flame, env: &Env) {
+        self.split.lifecycle(ctx, event, data, env);
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &Flame, data: &Flame, env: &Env) {
         self.split.update(ctx, old_data, data, env);
     }
 
@@ -79,12 +83,13 @@ impl Widget<Flame> for TransformEditWindow {
         self.split.paint(paint_ctx, data, env);
     }
 }
+
 fn transform_edit_panel() -> impl Widget<Flame> {
-    Split::vertical(
+    Split::rows(
         transform_list_panel(),
         LensWrap::new(
             LensWrap::new(
-                Split::vertical(
+                Split::rows(
                     TransformCoordsPanel::new().lens(affine_lens()),
                     transform_variations_panel(),
                 )
@@ -105,6 +110,7 @@ fn transform_list_panel() -> impl Widget<Flame> {
 fn affine_lens() -> impl Lens<Transform, AffineTransform> + Clone {
     Map::new(get_affine, put_affine)
 }
+
 fn get_affine(t: &Transform) -> AffineTransform {
     t.affine_transform().clone()
 }
@@ -123,6 +129,7 @@ fn unoption_map<T: Data>() -> impl Lens<T, Option<T>> {
         },
     )
 }
+
 struct TransformCoordsPanel {
     flex_col: Flex<AffineTransform>,
 }
@@ -135,18 +142,18 @@ impl TransformCoordsPanel {
         let flex_cx = LabeledTextBox::new("cx:");
         let flex_cy = LabeledTextBox::new("cy:");
         let row_x = Flex::row()
-            .with_child(flex_xx.lens(AffineTransform::xx), 0.5)
-            .with_child(flex_xy.lens(AffineTransform::xy), 0.5);
+            .with_flex_child(flex_xx.lens(AffineTransform::xx), 0.5)
+            .with_flex_child(flex_xy.lens(AffineTransform::xy), 0.5);
         let row_y = Flex::row()
-            .with_child(flex_yx.lens(AffineTransform::yx), 0.5)
-            .with_child(flex_yy.lens(AffineTransform::yy), 0.5);
+            .with_flex_child(flex_yx.lens(AffineTransform::yx), 0.5)
+            .with_flex_child(flex_yy.lens(AffineTransform::yy), 0.5);
         let row_c = Flex::row()
-            .with_child(flex_cx.lens(AffineTransform::cx), 0.5)
-            .with_child(flex_cy.lens(AffineTransform::cy), 0.5);
+            .with_flex_child(flex_cx.lens(AffineTransform::cx), 0.5)
+            .with_flex_child(flex_cy.lens(AffineTransform::cy), 0.5);
         let flex_col = Flex::column()
-            .with_child(row_x, 1.0)
-            .with_child(row_y, 1.0)
-            .with_child(row_c, 1.0);
+            .with_flex_child(row_x, 1.0)
+            .with_flex_child(row_y, 1.0)
+            .with_flex_child(row_c, 1.0);
         Self { flex_col }
     }
 }
@@ -155,24 +162,28 @@ impl Widget<AffineTransform> for TransformCoordsPanel {
         let old_data = data.clone();
         self.flex_col.event(ctx, event, data, env);
         if !old_data.same(data) {
-            ctx.invalidate();
+            ctx.request_paint();
         }
     }
 
-    fn update(
+    fn lifecycle(
         &mut self,
-        ctx: &mut UpdateCtx,
-        old_data: Option<&AffineTransform>,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
         data: &AffineTransform,
         env: &Env,
     ) {
-        match old_data {
-            None => ctx.invalidate(),
-            Some(old) => {
-                if !old.same(&data) {
-                    ctx.invalidate();
-                }
-            }
+        self.flex_col.lifecycle(ctx, event, data, env);
+    }
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        old_data: &AffineTransform,
+        data: &AffineTransform,
+        env: &Env,
+    ) {
+        if !old_data.same(&data) {
+            ctx.request_paint();
         }
         self.flex_col.update(ctx, old_data, data, env);
     }
@@ -198,13 +209,17 @@ fn transform_variations_panel() -> impl Widget<Transform> {
 
 fn transform_canvas() -> impl Widget<Flame> {
     let mut canvas = Canvas::new(Rect::new(-50.0, -50.0, 50.0, 50.0));
-    let moving_label = CanvasWrap::new(Label::new("Moving?"), |f: &Flame| {
-        match &f.selected_transform {
-            Some(t) => {
-                let a = t.affine_transform();
-                Point::new(a.cx, a.cy)
-            }
-            None => Point::ZERO,
+    let mut label = Label::new("text");
+    label.set_text_size(2.0);
+    let moving_label = CanvasWrap::new(label, |f: &Flame| match &f.selected_transform {
+        Some(t) => {
+            let a = t.affine_transform();
+            println!("{} {} ", a.cx, a.cy);
+            Point::new(a.cx, a.cy)
+        }
+        None => {
+            println!("None in label closure");
+            Point::ZERO
         }
     });
     canvas.add_child(moving_label);
@@ -339,7 +354,13 @@ impl<T: Data> Widget<T> for Canvas<T> {
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
+        for (_, child) in &mut self.children {
+            child.lifecycle(ctx, event, data, env);
+        }
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
         for (_, child) in self.children.iter_mut() {
             child.update(ctx, old_data, data, env);
         }
@@ -368,19 +389,26 @@ impl<T: Data> Widget<T> for Canvas<T> {
         let desired_region = self.visible_area;
         let x_scale = old_region.width() / desired_region.width();
         let y_scale = old_region.height() / desired_region.height();
-        let scale = Affine::scale(x_scale.min(y_scale));
+        let scale_value = x_scale.min(y_scale);
+        let scale = Affine::scale(scale_value);
         //TODO: Center properly.
-        let x_trans = old_region.x0.min(old_region.x1) - desired_region.x0.min(desired_region.x1);
-        let y_trans = old_region.y0.min(old_region.y1) - desired_region.y0.min(desired_region.y1);
+        let x_trans = (old_region.x0.min(old_region.x1) - desired_region.x0.min(desired_region.x1))
+            * scale_value;
+        let y_trans = (old_region.y0.min(old_region.y1) - desired_region.y0.min(desired_region.y1))
+            * scale_value;
         let translate = Affine::translate((x_trans, y_trans));
         let transform = translate * scale;
         paint_ctx.transform(transform);
-        println!("Desired rect: {:?}", desired_region);        
-        println!("Scales we got: {} {}",x_scale, y_scale);
+        println!("Desired rect: {:?}", desired_region);
+        println!("Scales we got: {} {}", x_scale, y_scale);
+        println!("scale:{:?}",scale);
+        println!("translate:{:?}", translate);
         println!("Transform we got: {:?}", transform);
         let new_width = old_region.width() / x_scale.min(y_scale);
         let new_height = old_region.height() / x_scale.min(y_scale);
-        
+        let clip_rect = 
+        println!("given region:{} expected size: {}, {}", old_region, new_width, new_height);
+        paint_ctx.clip(clip_rect);
         for (_, child) in self.children.iter_mut() {
             //Maybe we don't need the layout at all?! The CanvasWrap should handle it.
             //The issue, I think, is going to be figuring out hot/cold, in things which aren't podded.
@@ -433,8 +461,13 @@ impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> CanvasLayout<T> for CanvasWrap<W
             data,
             env,
         );
-        println!("{} {}", desired_origin,desired_size);
-        self.inner.set_layout_rect(Rect::from_origin_size(desired_origin,desired_size));
+        println!("{} {}", desired_origin, desired_size);
+        self.inner.set_layout_rect(
+            ctx,
+            data,
+            env,
+            Rect::from_origin_size(desired_origin, desired_size),
+        );
         (desired_origin, desired_size)
     }
 }
@@ -444,8 +477,17 @@ impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> Widget<T> for CanvasWrap<W, T, F
         self.inner.event(ctx, event, data, env);
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&T>, data: &T, env: &Env) {
-        self.inner.update(ctx, data, env)
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
+        self.inner.lifecycle(ctx, event, data, env);
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
+                self.inner.update(ctx, data, env);
+        if(self.closure)(data) != (self.closure)(old_data)
+        {
+            ctx.request_layout();
+            //println!("Repaint requested");
+        }
     }
 
     //NOTE: This is not called when we're being layouted on a canvas, so we act transparently.
@@ -454,13 +496,14 @@ impl<W: Widget<T>, T: Data, F: Fn(&T) -> Point> Widget<T> for CanvasWrap<W, T, F
     }
 
     fn paint(&mut self, paint_ctx: &mut PaintCtx, data: &T, env: &Env) {
-        self.inner.paint_with_offset(paint_ctx, data, env);
+        self.inner.paint(paint_ctx, data, env);
     }
 }
 
 struct Line {
     color: Color,
 }
+
 impl Line {
     fn get_size(data: &(Point, Point)) -> Size {
         let (p0, p1) = data;
@@ -471,15 +514,25 @@ impl Line {
         (width, height).into()
     }
 }
+
 impl Widget<(Point, Point)> for Line {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut (Point, Point), env: &Env) {
         //This is a draw-only widget, for now.
     }
 
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        event: &LifeCycle,
+        data: &(Point, Point),
+        env: &Env,
+    ) {
+    }
+
     fn update(
         &mut self,
         ctx: &mut UpdateCtx,
-        _old_data: Option<&(Point, Point)>,
+        _old_data: &(Point, Point),
         _data: &(Point, Point),
         env: &Env,
     ) {
@@ -512,7 +565,9 @@ impl<T: 'static + FromStr + Display + Data> LabeledTextBox<T> {
     fn new(label_text: impl Into<LabelText<T>>) -> Self {
         let label = Label::new(label_text);
         let edit = LensWrap::new(Parse::new(TextBox::new().padding(3.0)), unoption_map());
-        let flex_row = Flex::row().with_child(label, 0.0).with_child(edit, 1.0);
+        let flex_row = Flex::row()
+            .with_flex_child(label, 0.0)
+            .with_flex_child(edit, 1.0);
         Self { flex_row }
     }
 }
@@ -522,14 +577,13 @@ impl<T: 'static + FromStr + Display + Data> Widget<T> for LabeledTextBox<T> {
         self.flex_row.event(ctx, event, data, env);
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
-        match old_data {
-            None => ctx.invalidate(),
-            Some(old) => {
-                if !old.same(&data) {
-                    ctx.invalidate();
-                }
-            }
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
+        self.flex_row.lifecycle(ctx, event, data, env);
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: &T, data: &T, env: &Env) {
+        if !old_data.same(&data) {
+            ctx.request_paint()
         }
         self.flex_row.update(ctx, old_data, data, env);
     }

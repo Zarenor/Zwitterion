@@ -7,5 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-druid = {git = "https://github.com/Zarenor/druid.git", branch = "master"}
+druid = {git = "https://github.com/Zarenor/druid.git", branch = "trunk"}
 rustflame = {path = "../rustflame"}
+fluent-syntax = "0.9.3"
